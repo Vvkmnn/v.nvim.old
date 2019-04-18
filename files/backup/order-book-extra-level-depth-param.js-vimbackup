@@ -1,0 +1,22 @@
+"use strict";
+
+const ccxt = require ('ccxt')
+const asTable = require ('as-table')
+const log = require ('ololog')
+
+require ('ansicolor').nice
+
+;(async function test () {
+
+    const exchange = new ccxt.kraken ()
+    const orders = await exchange.fetchOrderBook ('BTC/CAD', {
+        'limit_bids': 5, // max = 50
+        'limit_asks': 5, // may be 0 in which case the array is empty
+        'group': 0, // 1 = orders are grouped by price, 0 = orders are separate
+    })
+
+    orders.map(log)
+
+    // orders.bids.map(log)
+    // orders.asks.map(log)
+}) ()

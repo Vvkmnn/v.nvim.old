@@ -1,0 +1,24 @@
+// Background Chrome Activity
+
+
+// Local Imports
+import { idleListener, tabListener } from './listeners'
+import { saveHistory } from './history'
+import { setupFirebase } from './cloud'
+import { userSignIn } from './auth'
+
+// Setup Cloud / Firebase
+setupFirebase()
+
+// Start Listeners
+idleListener()
+tabListener()
+
+// Prompt User Sign In
+userSignIn()
+
+// Save History
+setInterval(() => { 
+  saveHistory()
+}, 5000);
+

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "lib": ["es6"],
+    "module": "commonjs",
+    "noImplicitReturns": true,
+    "outDir": "lib",
+    "sourceMap": true,
+    "declaration":"true",
+    "target": "es6",
+      "typeRoots": ["node_modules/@0xproject/typescript-typings/types",
+                    "node_modules/@types"]
+  },
+  "compileOnSave": true,
+  "include": [
+    "src"
+  ]
+}

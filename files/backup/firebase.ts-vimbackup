@@ -1,0 +1,278 @@
+import * as admin from 'firebase-admin';
+import * as functions from 'firebase-functions';
+
+import { TokenPairsItem } from '@0xproject/connect';
+
+import { HydraOrder, OrderQuery } from './interfaces';
+
+admin.initializeApp(functions.config().firebase);
+const database = admin.firestore();
+
+const Orders = 'Orders';
+const SignedOrders = 'signed';
+const TokenPairs = 'Token_Pairs';
+
+/**
+ * Filters the given kvp object for specific parameters.
+ *
+ * Returns a filtered query object.
+ * @param query Key value pair object
+ * @param order Order object (Retrieved from the database)
+ */
+
+const filterQuery = (params: OrderQuery, order: HydraOrder): boolean => {
+    if (params.trader && params.tokenAddress) {
+        if (order.maker === params.trader || order.taker === params.trader) {
+            if (order.makerTokenAddress === params.trader || order.takerTokenAddress === params.trader) {
+                return true;
+            }
+        }
+    } else if (params.trader) {
+        if (order.maker === params.trader || order.taker === params.trader) {
+            return true;
+        }
+    } else if (params.tokenAddress) {
+        if (order.makerTokenAddress === params.trader || order.takerTokenAddress === params.trader) {
+            return true;
+        }
+    }
+    return false;
+};
+
+/**
+ * Generates the firebase firestore server.
+ *
+ * @param app Express application used to generate server.
+ */
+
+export const generateServer = (app: any): functions.HttpsFunction => {
+    return functions.https.onRequest(app);
+};
+
+/**
+ * Returns a reference the the firestore server.
+ */
+
+export const getDatabaseReference = (): FirebaseFirestore.Firestore => {
+    return database;
+};
+
+/**
+ * ErrorResponse class used to return potential errors when querying the database.
+ */
+
+// The singleton design pattern was used because it was felt that there was no need to have more than one ErrorResponse object.
+export class ErrorResponse {
+    private static _instance: ErrorResponse;
+    private _userResponse: string = 'Error with database.';
+    private _error: string;
+    private _errorCode: number;
+
+    public static Instance(): ErrorResponse {
+        return this._instance || (this._instance = new this());
+    }
+
+    private constructor() {}
+
+    public get ErrorCode(): number {
+        return this._errorCode;
+    }
+
+    public set ErrorCode(code: number) {
+        this._errorCode = code;
+    }
+
+    public get Error(): string {
+        return this._error;
+    }
+
+    public set Error(err: string) {
+        this._error = err;
+    }
+
+    public get UserResponse(): string {
+        return this._userResponse;
+    }
+
+    public set UserResponse(response: string) {
+        this._userResponse = response;
+    }
+
+}
+
+// --------------------------------------------------------- //
+
+const errorResponse: ErrorResponse = ErrorResponse.Instance();
+
+// --------------------------------------------------------- //
+
+/**
+ * Queries the database for the baseTokenAddress and quoteTokenAddress
+ *
+ * Returns an array of FireBaseFirestore.DocumentData for all the given documents found with the two given parameters.
+ * @param baseTokenAddress The address of the token designated as the baseToken (takerTokenAddress)
+ * @param quoteTokenAddress The address of the token designated as the quoteToken (makeTokenAddress)
+ *
+ * @returns FirebaseFirestore.DocumentData[] or ErrorResponse
+ */
+export const getBids = async (baseTokenAddress: string, quoteTokenAddress: string): Promise<FirebaseFirestore.DocumentData[] | ErrorResponse> => {
+    const returnBids: FirebaseFirestore.DocumentData[] = [];
+    const bidsQuery = database.collection(SignedOrders).where('takerTokenAddress', '==', baseTokenAddress).where('makerTokenAddress', '==', quoteTokenAddress);
+    const awaitObj = await bidsQuery
+    .get()
+    .then(snapshot => snapshot.docs.map(doc => returnBids.push(doc.data())))
+    .catch(err => { const retErr = ErrorResponse.Instance(); retErr.Error = err;  return retErr; });
+    return returnBids;
+};
+
+/**
+ * Queries the database for the baseTokenAddress and quoteTokenAddress
+ *
+ * Returns an array of FireBaseFirestore.DocumentData for all the given documents found with the two given parameters.
+ * If there is an error, returns
+ * @param baseTokenAddress The address of the token designated as the baseToken (makerTokenAddress)
+ * @param quoteTokenAddress The address of the token designated as the quoteToken (takerTokenAddress)
+ *
+ * @returns FirebaseFirestore.DocumentData[] or ErrorResponse
+ */
+export const getAsks = async (baseTokenAddress: string, quoteTokenAddress: string): Promise<FirebaseFirestore.DocumentData[] | ErrorResponse> => {
+    const returnAsks: FirebaseFirestore.DocumentData[] = [];
+    const asksQuery = database.collection(SignedOrders).where('takerTokenAddress', '==', quoteTokenAddress).where('makerTokenAddress', '==', baseTokenAddress);
+    const awaitObj = await asksQuery
+    .get()
+    .then(snapshot => snapshot.docs.map(doc => returnAsks.push(doc.data())))
+    .catch(err => { const retErr = ErrorResponse.Instance(); retErr.Error = err;  return retErr; });
+    return returnAsks;
+};
+
+/**
+ * Queries the database for tokens matching tokenA and/or tokenB
+ *
+ * Returns an array of token pairs found.
+ * @param tokenA Token address A
+ * @param tokenB Token address B
+ *
+ * @returns FirebaseFirestore.DocumentData[] or ErrorResponse
+ */
+export const getTokensAB = async (tokenA: string, tokenB: string): Promise<FirebaseFirestore.DocumentData[] | ErrorResponse> => {
+    console.log(tokenA, tokenB);
+
+    const returnTokenPairs: FirebaseFirestore.DocumentData[] = [];
+
+    const tokenQueryA = database.collection(TokenPairs);
+
+    const awaitObj = await tokenQueryA
+    .get()
+    .then(snapshot => {
+        snapshot
+        .forEach(doc => {
+            const tokenPair: TokenPairsItem = doc.data() as TokenPairsItem;
+            if (tokenPair.tokenA.address === tokenA || tokenPair.tokenB.address === tokenB) {
+                returnTokenPairs.push(tokenPair);
+            }
+        });
+    })
+    .catch(err => { const retErr = ErrorResponse.Instance(); retErr.Error = err;  return retErr; });
+
+    return returnTokenPairs;
+};
+
+// TODO: Implement -> Comment
+export const getTokens = async (token: string): Promise<FirebaseFirestore.DocumentData[] | ErrorResponse> => {
+    const returnTokenPairs: FirebaseFirestore.DocumentData[] = [];
+
+    const tokenQueryA = database.collection(TokenPairs);
+
+    const awaitObj = await tokenQueryA
+    .get()
+    .then(snapshot => {
+        snapshot
+        .forEach(doc => {
+            const tokenPair: TokenPairsItem = doc.data() as TokenPairsItem;
+            if (tokenPair.tokenA.address === token || tokenPair.tokenB.address === token) {
+                returnTokenPairs.push(tokenPair);
+            }
+        });
+    })
+    .catch(err => { const retErr = ErrorResponse.Instance(); retErr.Error = err;  return retErr; });
+
+    return returnTokenPairs;
+};
+
+/**
+ * Queries the database for an order whose hash matches that of the given parameter.
+ *
+ * Returns an order object if the order is found, otherwise returns null.
+ * @param orderHash The hash of a specific order
+ *
+ * @returns FirebaseFirestore.DocumentData or ErrorResponse
+ */
+export const getOrderByHash = async (orderHash: string): Promise<FirebaseFirestore.DocumentData | ErrorResponse> => {
+    let returnOrder: FirebaseFirestore.DocumentData;
+
+    let awaitObj = await database.collection(SignedOrders).doc(orderHash)
+    .get()
+    .then(doc => { if (doc.exists) { returnOrder = doc.data(); } })
+    .catch(err => { const retErr = ErrorResponse.Instance(); retErr.Error = err;  return retErr; });
+
+    if (returnOrder !== null) {
+        return returnOrder;
+    }
+
+    awaitObj = await database.collection(Orders).doc(orderHash)
+    .get()
+    .then(doc => { if (doc.exists) { returnOrder = doc.data(); } })
+    .catch(err => { const retErr = ErrorResponse.Instance(); retErr.Error = err;  return retErr; });
+
+    return returnOrder;
+};
+
+/**
+ * Gets orders from server based on kvp's contained in the query object.
+ *
+ * Returns an array of orders
+ * @param params Key value pair OrderQuery
+ *
+ * @returns FirebaseFirestore.DocumentData[] or ErrorResponse
+ */
+export const getOrders = async (params: OrderQuery): Promise<FirebaseFirestore.DocumentData[] | ErrorResponse> => {
+    const returnOrders: FirebaseFirestore.DocumentData[] = [];
+    const awaitObj = await database.collection(SignedOrders)
+    .get()
+    .then(snapshot => {
+        snapshot
+        .forEach(doc => {
+            const order: HydraOrder = doc.data() as HydraOrder;
+            let match = true;
+
+            if (filterQuery(params, order)) {
+                returnOrders.push(order);
+                return;
+            }
+
+            for (const key of Object.keys(params)) {
+                if (key === 'trader' || key === 'tokenAddress' || key === 'page' || key === 'per_page') {
+                    continue;
+                }
+                if (order[key] !== params[key]) {
+                    console.log('Order:', order[key], '!==', 'Param:', params[key], 'removed');
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                returnOrders.push(order);
+            }
+        });
+    })
+    .catch(err => { const retErr = ErrorResponse.Instance(); retErr.Error = err;  return retErr; });
+
+    return returnOrders;
+};
+
+// TODO: Comment
+export const postOrder = (orderHash: string, order: HydraOrder): void | ErrorResponse => {
+    database.collection(SignedOrders).doc(orderHash)
+    .set(order)
+    .catch(err => { const retErr = ErrorResponse.Instance(); retErr.Error = err;  return retErr; });
+};

@@ -1,0 +1,77 @@
+// Manage user history locally, then send to server
+
+// Package Imports
+var firebase = require("firebase/app");
+require("firebase/firestore");
+
+// Global History data structure
+// A long array filled with objects described user activity
+// { event, timestamp, favicon, title, url } 
+export let history : object[] = []
+
+/**
+ * Update the Chrome Extension badge count with history length
+ *
+ */
+export let updateBadge = () => {
+    let badge = history.length.toString()
+
+    return chrome.browserAction.setBadgeText({text: badge});
+}
+
+/**
+ * Update History with browser data.
+ *
+ */
+export let appendHistory = ( event : string, browserData ) => {
+
+   console.log("[Find Extension] Current History", history)
+    // Append only when tab is fully loaded
+    history.push({
+      event: event,
+      timestamp: new Date().toString(),
+      title: browserData.title,
+      url: browserData.url
+    })
+
+    return updateBadge()
+}
+
+/**
+ * Clear global history
+ *
+ */
+export let clearHistory = () => {
+    history = []
+    return console.log("[Find Extension] History Cleared!")
+}
+
+/**
+ * Send history to Firestore
+ *
+ */
+export let sendHistory = () => {
+    // On user idle, locked break and send new "Session:
+    // Otherwise, save current history to Firestore (merge) as same session 
+
+    let userID = firebase.auth().currentUser.uid || "anon"
+    let firstEntry = history[0]["timestamp"] || ""
+
+    console.log(`[Find Extension] Sending History for ${userID} to Firestore`)
+
+    // Use current set of history
+    // Nested json arrray because Google is weird about passing arrays directly
+    if (firstEntry) {
+        return firebase
+            .firestore()
+            .collection("histories")
+            .doc(userID)
+            .collection("sessions")
+            .doc(firstEntry)
+            .set({ history: history })
+            .then(docRef => console.log("[Find Extension] History Saved!"))
+            .catch(error => console.error("[Find Extension] Error saving document: ", error))
+    } else {
+    console.log(`[Find Extension] No entry in History yet for ${userID}`)
+};
+

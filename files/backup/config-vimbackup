@@ -1,0 +1,29 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = true
+	ignorecase = true
+	precomposeunicode = true
+[remote "origin"]
+	url = git@github.com:Vvkmnn/dotfiles.git
+[status]
+	showUntrackedFiles = no
+	active = true
+[submodule ".zplug"]
+	url = git@github.com:zplug/zplug.git
+	active = true
+[submodule ".config/nvim/pack/dein/start/vim-polyglot"]
+	url = https://github.com/sheerun/vim-polyglot
+	active = true
+[submodule ".emacs"]
+	url = https://github.com/hlissner/doom-emacs.git
+	active = true
+[submodule ".emacs.d.bak"]
+	url = https://github.com/syl20bnr/spacemacs.git
+	active = true
+[submodule ".config/nvim/pack/dein/start/dein.vim"]
+	active = true
+	url = https://github.com/Shougo/dein.vim.git
+[submodule ".fzf"]
+	url = https://github.com/junegunn/fzf.git
+	active = true

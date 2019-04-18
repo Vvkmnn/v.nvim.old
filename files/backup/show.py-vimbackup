@@ -1,0 +1,5 @@
+import csv
+import pandas as pf
+
+data = pf.read_csv('SurveyData.csv')
+print(data.head())

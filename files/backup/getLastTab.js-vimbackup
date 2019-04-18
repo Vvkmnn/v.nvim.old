@@ -1,0 +1,7 @@
+chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
+    // Do something
+    //
+    //
+        console.log(window.location)
+        console.log(tab.url);
+});

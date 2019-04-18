@@ -1,0 +1,92 @@
+// Price Utilties
+
+// Package Dependencies
+import { ECSignature, Order, SignedOrder } from '@0xproject/types';
+// import { BigNumber } from '@0xproject/utils';
+
+// Local Dependencies
+import { hydra0x } from './env'
+
+export const orderPrice = (order: Order) : number => {
+    // https://github.com/0xProject/standard-relayer-api/blob/master/http/v0.md
+    // Order is the Taker Token (token you wish to buy) over the Maker Token (token you are offering)
+    // Price is determined by dividing the Token Amount you are token, over the ammount being offered
+    // (takerTokenAmount/makerTokenAmount) in ascending orderr
+
+    return order.takerTokenAmount / order.makerTokenAmount
+}
+
+// // Given the desired price per token (maker/taker)
+// export const takerAmount = async (desiredPrice) => {
+//     // Desired Price is the price in Maker Amount
+
+//     // The takerAmount for an Order
+//     return price * order.makerTokenAmount
+// }
+export const orderData = (order: Order) => {
+
+    const { takerTokenAddress,
+        takerTokenAmount,
+        makerTokenAddress,
+        makerTokenAmount,
+        expirationUnixTimestampSec } = order
+
+    const price = orderPrice(order)
+
+    console.log(`price:${price} taking ${takerTokenAddress} making ${makerTokenAddress}`)
+}
+
+/**
+ * A function that sorts orders by their Price in descending order, so users can always get the most Taker tokens per unit of Maker token spent.
+ * @param orders
+ */
+
+export const sortOrdersByPrice = async ( orders: SignedOrder [] ) : Promise<SignedOrder[]> => {
+    // Descending by Price (taker/maker)
+    // What is the most taker tokens I can get per unit of maker tokens?
+    return orders.sort((order1, order2) => orderPrice(order2) - orderPrice(order1))
+}
+
+
+// asks
+// A book of people 'asking' WETH for X Tokens
+// New buyers will look for the cheapest prices, and will start with the orders that give the MOST X per WETH spent (highest X/WETH == lowest WETH/X; what is the least WETH someone will take from my pocket to give me X?
+// So this list is sorted in descending order from the highest X/WETH (ascending if WETH/X)
+// I am asking for the highest X/WETH
+const asks: SignedOrder[] = []
+
+// bids
+// A book of people 'bidding' on X tokens with WETH
+// New sellers will look for the highest prices, and will start with the orders that give the most WETH per X token (highest WETH/X == lowest X/WETH; what is the most WETH you would give me for X tokens in my pocket?)
+// This list is sorted in descending order so from the highest WETH/X (or ascending if the lowest X/WETH)
+// I am bidding on the lowest X/WETH
+const bids: SignedOrder[] = []
+
+
+// Add to the 'bids' of an orderbook, and bid on a Token with WETH in your pocket
+// Bid on a token as a buyer, and offer a desired amount of Tokens
+// To sell fast, wanna hit the highest WETH/X, or the lowest X/WETH
+const bidToken = async (token: string, baseToken: string = 'WETH') => {
+    const makerToken = baseToken
+    const takerToken = token
+}
+
+// Add to the 'asks' of an orderbook, and ask WETH for a given Token in your pocket
+const askToken = async (token: string, baseToken: string = 'WETH') => {
+
+    const makerToken = token
+    const takerToken = baseToken
+}
+
+
+// Go to bottom of 'asks' order book, and buy the Token for WETH in your pocket
+// People are asking X/WETH with each order, and you want the one that will give you the MOST WETH
+// Therefore, sort orders by descending X/WETH price, and get the top of the stack
+const buyToken = async () => { }
+
+// Go top of 'bids' order book, and sell the Token at the most expensive Token Price
+const sellToken = async () => { }
+
+// Fill up to a Given Amount
+const desiredAmount = () => { }
+    //From bids get the top / asks get the bottom and iterate until you hit the desired amount you wish to buy or sell

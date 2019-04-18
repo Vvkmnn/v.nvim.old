@@ -1,0 +1,29 @@
+# Editing --------------------
+# Plugins to make navigation in Vim more convenient
+
+[[plugins]]
+repo = 'hecal3/vim-leader-guide' # Similar to Emacs guide-key
+
+[[plugins]]
+repo = 'tpope/vim-unimpaired' # tpope/unimpaired.vim: pairs of handy bracket mappings
+
+[[plugins]]
+repo = 'tpope/vim-vinegar' # vinegar.vim: combine with netrw to create a delicious salad dressing
+
+# [[plugins]]
+# repo = 'Shougo/defx.nvim' # Shougo/defx.nvim: 📁 The dark powered file explorer implementation(vaporware)
+
+
+# [[plugins]]
+# repo = 'justinmk/vim-dirvish' # Minimal Navigator via <-> 
+# on_cmd = 'Dirivish'
+# on_map = { n = '<Plug>' }
+
+# [[plugins]]
+# repo = 'justinmk/vim-dirvish' # Minimal Navigator via <-> 
+# on_cmd = 'Dirivish'
+# on_map = { n = '<Plug>' }
+
+# [[plugins]]
+# repo = 'tpope/vim-eunech' # Unix helpers via <:Delete>, <:Move>, ...
+# on_cmd = ['Delete', 'Move']

@@ -1,0 +1,6 @@
+
+# Buffers --------------------
+# Plugins to make buffers in Vim more convenient
+
+[[plugins]]
+repo = 'qpkorr/vim-bufkill'

@@ -1,0 +1,58 @@
+
+// I/O for @hydra/fetch
+
+// Private Dependencies
+import { hydraFunctions } from '@hydra/util'
+
+// Local Dependencies
+import {
+    fetchKovanOrderbooks,
+    fetchTokenPairs,
+    fetchOrders
+} from './0xconnect'; // 0x Connect APIs
+
+import { testOrderbook } from './custom' // Custom APIs
+
+
+export const fetchKovan = hydraFunctions
+    .https
+    .onRequest(async (req, res) => {
+
+    try {
+        console.log('Fuck you')
+        const kovanOrderBooks = await fetchKovanOrderbooks();
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.log(error)
+
+    }
+
+});
+
+
+// export const orderbook = functions.https.onRequest(async (req, res) => {
+//     try {
+//         await fetchOrderbooks();
+//         res.sendStatus(200);
+//     } catch (e) { console.log(e) }
+// });
+
+// export const tokenPairs = functions.https.onRequest(async (req, res) => {
+//     try {
+//         await fetchTokenPairs();
+//         res.sendStatus(200);
+//     } catch (e) { console.log(e) }
+// });
+
+// export const orders = functions.https.onRequest(async (req, res) => {
+//     try {
+//         await fetchOrders();
+//         res.sendStatus(200);
+//     } catch (e) { console.log(e) }
+// });
+
+// exports.test = functions.https.onRequest(async (req, res) => {
+//     await testOrderbook();
+//     res.sendStatus(200);
+// });

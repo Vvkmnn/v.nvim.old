@@ -1,0 +1,32 @@
+{
+  "manifest_version": 2,
+  "name": "Find Extension",
+  "description": "A Chrome Extension for Find Technologies.",
+"icons": { "16": "icon.png",
+           "48": "icon.png",
+          "128": "icon.png" },
+  "version": "2.0",
+  "content_security_policy":"script-src 'self'  https://www.gstatic.com/ https://*.firebaseio.com https://www.googleapis.com https://apis.google.com; object-src 'self'",
+    "permissions" :[
+      "storage",
+      "tabs",
+      "idle",
+      "<all_urls>"
+    ],
+  "options_ui": {
+    "page": "options.html",
+    "chrome_style": true
+  },
+  "browser_action": {
+    "default_icon": "icon.png"
+  },
+  "content_scripts": [
+      {
+          "matches": ["<all_urls>"],
+          "js": ["js/content_script.js"]
+      }
+  ],
+  "background": {
+    "page": "background.html"
+  }
+}

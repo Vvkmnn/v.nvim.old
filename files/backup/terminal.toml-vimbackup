@@ -1,0 +1,3 @@
+[[plugins]]
+repo='codi.vim'
+on_cmd='Codi'

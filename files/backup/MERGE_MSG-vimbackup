@@ -1,0 +1,30 @@
+Merge branch 'develop' of https://github.com/hlissner/doom-emacs into local
+
+* 'develop' of https://github.com/hlissner/doom-emacs: (76 commits)
+  Fix typo causing startup error in helm modules
+  Add: ace-link-mu4e autoload
+  Fix error when def-package-hook! was used anywhere
+  config/default: SPC h R = doom//reload
+  hscroll-margin = 2
+  Enable global-undo-tree-mode after setting variables
+  Rewrite :defer semantics
+  Add [slim-mode] to :lang web +html
+  Fix void macro errors after byte-compiling
+  Fix doom/info displaying nil module flags
+  ui/evil-goggles: enable evil-goggles-mode on load
+  tools/eshell: default to ~/.doom.d/eshell or ~/.eshell
+  Update unit test bootstrap
+  Remove esup
+  Map /[A-Z]+$ files to text-mode
+  tools/eshell: remove custom aliases
+  tools/eshell: set eshell-directory-name if ~/.doom.d/eshell exists
+  tools/eshell: dedicate eshell windows
+  doom-visible-windows: support visible window-parameter
+  Move :tools impatient-mode to new :collab category
+  ...
+
+# Please enter a commit message to explain why this merge is necessary,
+# especially if it merges an updated upstream into a topic branch.
+#
+# Lines starting with '#' will be ignored, and an empty message aborts
+# the commit.

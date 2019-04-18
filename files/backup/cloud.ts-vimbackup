@@ -1,0 +1,44 @@
+// Talks to Firebase
+
+// Add Firebase and Firestore connections
+var firebase = require("firebase/app");
+require("firebase/firestore");
+
+// Firebase - Development 
+// let config = {
+//   apiKey: "AIzaSyAYSeK__NrGTgT4HTtm7wHPtuqPbKiMPMY",
+//   authDomain: "findfirebase.firebaseapp.com",
+//   databaseURL: "https://findfirebase.firebaseio.com",
+//   projectId: "findfirebase",
+//   storageBucket: "findfirebase.appspot.com",
+//   messagingSenderId: "433855169607"}
+
+
+// Firebase - Staging
+// var config = {
+//     apiKey: "AIzaSyCz5uk7O4XCBbYCic6rINE54WIVOBDf7GA",
+//     authDomain: "find-staging.firebaseapp.com",
+//     databaseURL: "https://find-staging.firebaseio.com",
+//     projectId: "find-staging",
+//     storageBucket: "find-staging.appspot.com",
+//     messagingSenderId: "559569399555"
+//   };
+
+// Firebase - Production
+  var config = {
+    apiKey: "AIzaSyBMiMQD2Y_G0pWN5SZp8TruQ36yewWHznw",
+    authDomain: "find-3e0e7.firebaseapp.com",
+    databaseURL: "https://find-3e0e7.firebaseio.com",
+    projectId: "find-3e0e7",
+    storageBucket: "find-3e0e7.appspot.com",
+    messagingSenderId: "57103364337"
+  };
+
+firebase.initializeApp(config)
+
+// Initialize Firestore
+firebase.firestore().settings({timestampsInSnapshots: true})
+
+// Run globals by calling function
+export let setupFirebase = () : void => console.log('[Find Extension] Connected to Firebase.')
+

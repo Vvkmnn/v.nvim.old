@@ -1,0 +1,429 @@
+// Lookup functions for Facebook Data
+
+// Package Dependencies
+import * as admin from 'firebase-admin'
+import * as functions from 'firebase-functions'
+import * as facebook from 'fbgraph'
+import * as express from 'express'
+import * as _ from "lodash";
+
+// Local Dependencies
+import { getSurvey } from '../logic/getsetter'
+
+/// Helper Functions
+
+/**
+ * Looks up {userID} on Facebook to acquire public user data.
+ */
+export let userLookup = functions.firestore
+    .document(`respondents/{userID}`)
+    .onCreate(event => {
+        const userID: string = event.params.userID
+        const userEntry: object = event.data.data()
+
+        console.log(`Retrieving User Data from Facebook for ${userID}`)
+
+        return facebook
+            .setVersion("2.10")
+            .setAccessToken(process.env.FACEBOOK_PAGE_TOKEN)
+            .get(`${userID}`, (error, response) => {
+                if (error) {
+                    console.log(`Error updating user data for ${userID} : ${JSON.stringify(error)}`)
+                    return response.sendStatus(500)
+                } else {
+                    console.log(`Retrieved user response from Facebook ${userID}: ${response}`)
+                    return event.data.ref.update(response);
+                }
+            })
+    })
+
+/**
+ * Queries the Facebook Ad API via Adgeolocation Search
+ * https://developers.facebook.com/docs/marketing-api/targeting-search
+ */
+export let locationLookup = functions.https
+    .onRequest((req: express.Request, res: express.Response) => {
+
+        const query: string = req.query.query || undefined
+
+        console.log(`Finding locations matching "${query}"...`)
+        return facebook
+            .setVersion("2.11")
+            .setOptions({
+                timeout: 3000
+                , pool: { maxSockets: Infinity }
+                , headers: { connection: "keep-alive" }
+            })
+            .setAccessToken(process.env.FACEBOOK_PAGE_TOKEN)
+            .get(`search?q=${query}&type=adgeolocation`, (error, response) => {
+                if (error) {
+                    console.log(`Error retrieving location results for "${query}" : ${JSON.stringify(error)}`)
+                    return res.sendStatus(500)
+                } else {
+                    console.log(`Retrieved location results for "${query}" : ${response.data}`)
+                    return res.status(200).send(response.data)
+                }
+            })
+    })
+
+
+/**
+ * Queries the Facebook Ad API via Detailed Targeting Search
+ * https://developers.faceresponse => book.com/docs/marketing-api/targeting-search
+ */
+export let targetingLookup = functions.https
+    .onRequest((req: express.Request, res: express.Response) => {
+
+        // Detailed Targeting Search
+        //https://developers.facebook.com/docs/marketing-api/targeting-search
+        const category: string = req.query.category || undefined
+        const query: string = req.query.query || undefined
+
+        console.log(`Finding demographics, interests, or behaviours matching "${query}"...`)
+        return facebook
+            .setVersion("2.11")
+            .setOptions({
+                timeout: 3000
+                , pool: { maxSockets: Infinity }
+                , headers: { connection: "keep-alive" }
+            })
+            .setAccessToken(process.env.FACEBOOK_AD_TOKEN)
+            .get(`act_464981260561886/targetingsearch?q=${query}`, (error, response) => {
+                if (error) {
+                    console.log(`Error retrieving targeting results for "${query}" : ${JSON.stringify(error)}`)
+                    return res.sendStatus(500)
+                } else {
+                    console.log(`Retrieved targeting results for "${query}" : ${response.data}`)
+                    return res.status(200).send(response.data)
+                }
+            })
+    })
+
+
+/**
+ * Estimate {respondents} from using `delivery_estimate()` from Facebook, given {targeting}
+ */
+export async function getConversionstimate(targeting: object, budget: number = 100) {
+    console.log(`Checking Conversion Estimate for Targeting: ${targeting} via Facebook...`)
+
+    let deliveryEstimateSettings = {
+        "targeting_spec": targeting,
+        "optimization_goal": "REPLIES"
+    }
+
+    return facebook
+        .setVersion("2.11")
+        .setAccessToken(process.env.FACEBOOK_AD_TOKEN)
+        .getAsync(`act_${process.env.FACEBOOK_AD_ACCOUNT_ID}/delivery_estimate`, deliveryEstimateSettings)
+        .then(response => response.data.map(estimate => {
+            console.log(`Recieved Delivery Estimate from Facebook:`, estimate);
+
+            try {
+                // let dailyOutcomesCurve = estimate.daily_outcomes_curve ? estimate.daily_outcomes_curve : undefined
+                let facebookPopulation = estimate.estimate_dau ? estimate.estimate_dau : estimate.estimate_mau // MAU by far the most available metric; use better DAU if available
+
+
+                // Messenger Benchmarks
+                // Q4 2017 : https://blog.adstage.io/2018/02/13/facebook-ads-benchmarks-q4-2017/
+                let benchmarkCPM = 1400 // $14.00 per 1000 Impressions
+                let benchmarkCTR = 0.02 // 2% CTR per Impression
+
+                // TODO: Calculate direct clicks via CPC? 
+                // Both yield similar ranges, need to test with real data.
+                // let benchmarkCPC = 125 // $1.25 per Click
+                // let expectedClicks = expectedBudget / benchmarkCPC
+
+                // Messenger Assumptions
+                // Conservative expected respondents; about 20ish users for $!00 dollars. Seems fair.
+                let expectedBudget = 0.75 * budget * 100 // Assume only 75% budget available in Cents
+                let expectedCPM = estimate.bid_estimate.median_bid != 0 ? estimate.bid_estimate.median_bid : benchmarkCPM
+                let expectedCTR = benchmarkCTR // TODO: There will be a better CTR value in the future; watch for it
+                let expectedCompletion = 0.5 // Assume Only 50% of users complete survey
+                let expectedImpressions = (expectedBudget / expectedCPM) * 1000
+
+                let expectedRespondents = expectedCompletion * expectedCTR * expectedImpressions
+                let representativeSampleSize = expectedRespondents / facebookPopulation
+                // Get average? Randomize in range? Pick whever one is higher? 
+                // Return that average as the estimate, query with a budget $10 less and $10 more
+
+
+                console.log(`Conservatively expect ${expectedRespondents} Respondents from ${facebookPopulation} (${representativeSampleSize}) Facebook Population with this Targeting.`)
+                return expectedRespondents
+            } catch (error) {
+                console.error(`Error getting Delivery Estimate from Facebook: `, error)
+            }
+        }))
+}
+
+/**
+ * Lookup {surveyID} and return an array of {answers} from FireStore
+ *
+ */
+export async function answersFirestoreQuery(surveyID: string) {
+    console.log(`Retrieving answers to ${surveyID}...`);
+
+    return admin.firestore()
+        .collection("answers")
+        .where("questionNumber", "<", 9999)
+        .where("surveyID", "==", surveyID)
+        .get()
+        .then(querySnapshot => querySnapshot.docs.map(doc => doc.data()))
+        .then(answers => answers.map(answer => _.omit(answer, 'userID'))) // Never retrieve userID, for security
+        .catch(error => console.error(`Error retrieving ${surveyID} answers: `, error))
+}
+
+/**
+ * Cloud Function to estimate user Converions
+ * $ firebase serve --only functions
+ *
+ */
+export let localMaker = functions.https.onRequest((req, res) => {
+        let targeting = req.body.targeting
+        let budget = req.body.budget
+
+try {
+        let estimate = await getConversionstimate(targeting, budget)
+        // console.log(estimate)
+res.setHeader('Content-Type', 'application/json');
+    return res.send(JSON.stringify(example));
+    } catch (error) {
+        console.error(error)
+        res.sendStatus(500);
+    }
+});
+
+/**
+ * Cloud Function to localy test other functions via a local endpoint 
+ * $ firebase serve --only functions
+ *
+ */
+export let localMaker = functions.https.onRequest(async (req, res) => {
+    // Insert proto function here
+
+    try {
+        // let surveyID = "Ztniop1cJkWaLfRHMSQp" 
+        // let surveyID = "qX3e87GDFHpeO9elKjJy" 
+        let surveyID = "mRzAY0DVueqU76m5Vpa6"
+
+        let survey = await getSurvey(surveyID)
+        let targeting = survey.targeting
+
+        let estimate = await getConversionstimate(targeting)
+        // console.log(estimate)
+
+        return res.sendStatus(200);
+    } catch (error) {
+        console.error(error)
+        res.sendStatus(500);
+    }
+
+});
+
+
+/**
+ * Quick function to save starter survey to Firestore.
+ *
+ */
+// export let surveyPusher = functions.https.onRequest((req, res) => {
+//   return admin
+//     .firestore()
+//     .collection("surveys")
+//     .add({
+//       maxSurveyBudget: "100",
+//       targeting: {
+//         age_max: 46,
+//         age_min: 18,
+//         flexible_spec: [
+//           {
+//             interests: [
+//               { id: "6003017860156", name: "sneakers mag" },
+//               { id: "6003187429655", name: "kanye west" },
+//               { id: "6003201228978", name: "jay-z" },
+//               { id: "6003225556345", name: "hip hop music" },
+//               { id: "6003384587151", name: "sneakers (footwear)" }
+//             ],
+//             behaviors: [{ id: "23842646930370111", name: "animal welfare" }],
+//             relationship_statuses: [1]
+//           }
+//         ],
+//         genders: [2],
+//         geo_locations: {
+//           cities: [{ key: "296875", name: "toronto" }],
+//           regions: [
+//             { key: "3847", name: "california" },
+//             { key: "1744", name: "tamil nadu" },
+//             { key: "1922", name: "tokyo" }
+//           ]
+//         },
+//         locales: [6, 9]
+//       },
+//       questions: [
+//         {
+//           quick_replies: [
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 0,
+//               title: "Hi Opi!"
+//             }
+//           ],
+//           text: "Hello, my name is Opi. I collect opinions!"
+//         },
+//         {
+//           quick_replies: [
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 1,
+//               title: "Yep!"
+//             },
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 1,
+//               title: "🤷"
+//             },
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 1,
+//               title: "Duh."
+//             }
+//           ],
+//           text:
+//             "Here’s how it works: I ask you a question, you hit a button! (You know how to hit buttons right?)"
+//         },
+//         {
+//           quick_replies: [
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 2,
+//               title: "😂"
+//             },
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 2,
+//               title: "😜"
+//             },
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 2,
+//               title: "😛"
+//             }
+//           ],
+//           text: "Great! That's pretty much it! Welcome to the beta!"
+//         }
+//       ]
+//     })
+//     .then(surveyRef => {
+//       console.log(
+//         `Pushed Survey ${
+//           surveyRef.id
+//         } to Firestore! Updating Name and Postback...`
+//       );
+//       // update() calls adMaker, which runs on any onUpdate() event; have to make sure
+//       return surveyRef
+//         .update({
+//           name: "Survey " + surveyRef.id,
+//           postback: surveyRef.id
+//         })
+//         .then(writeRef => {
+//           console.log("Created and updated Survey name! ", writeRef);
+//           res.sendStatus(200);
+//         })
+//         .catch(error => {
+//           console.log("Error updating Survey: ", error);
+//           res.sendStatus(500);
+//         })
+//         .catch(error => {
+//           console.log("Error pushing Survey to Firestore:", error);
+//           res.sendStatus(500);
+//         });
+//     });
+// });
+//
+/**
+ * HTTP function to make starter survey on Firestore
+ *
+ */
+
+// export let localStarterSurveyMaker = functions.https.onRequest((req, res) => {
+//   return admin
+//     .firestore()
+//     .collection("surveys")
+//     .doc("survey_0")
+//     .set({
+//       postback: "survey_0",
+//       questions: [
+//         {
+//           quick_replies: [
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 0,
+//               title: "Hi Opi!"
+//             }
+//           ],
+//           text: "Hello, my name is Opi. I collect opinions!"
+//         },
+//         {
+//           quick_replies: [
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 1,
+//               title: "Yep!"
+//             },
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 1,
+//               title: "🤷"
+//             },
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 1,
+//               title: "Duh."
+//             }
+//           ],
+//           text:
+//             "Here’s how it works: I ask you a question, you hit a button! (You know how to hit buttons right?)"
+//         },
+//         {
+//           quick_replies: [
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 2,
+//               title: "😂"
+//             },
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 2,
+//               title: "😜"
+//             },
+//             {
+//               content_type: "text",
+//               image_url: "https://i.imgur.com/Qwca6NZ.png",
+//               payload: 2,
+//               title: "😛"
+//             }
+//           ],
+//           text: "Great! That's pretty much it! Welcome to the beta!"
+//         }
+//       ]
+//     })
+//     .then(ref => {
+//       console.log("Saved Starter Survey to Firestore!", ref);
+//       return res.sendStatus(200);
+//     })
+//     .catch(error => {
+//       console.log("Error saving Starer Survey to Firestore:", error);
+//       return res.sendStatus(500);
+//     });
+// });

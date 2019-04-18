@@ -1,0 +1,17 @@
+# .PHONY: test link clean clean-pyc clean-build clean-test docs docker-build
+
+# init:
+# 	python setup.py install
+
+dev:
+        vyper src/*.v.py
+test:
+	python setup.py test
+
+lint:
+	flake8 vyper tests --ignore=E122,E124,E127,E128,E501,E731
+
+clean: 
+	rm -fr build/
+	rm -fr dist/
+	rm -fr *.egg-info

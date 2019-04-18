@@ -1,0 +1,82 @@
+// Listeners and parsers for browser activity
+import { appendHistory, sendHistory, clearHistory } from './history'
+
+export function idleListener() {
+
+/// Idle Listener 
+// 15 second minimum, thanks google
+chrome
+    .idle
+    .setDetectionInterval(16)
+
+chrome
+    .idle
+    .onStateChanged
+    .addListener(handleState)
+}
+
+
+let handleState = (newState) => {
+    console.log('[Find Extension] Browser State: ', newState)
+
+    if (newState != "active") {
+        clearHistory()
+    } else {
+      console.log('[Find Extension] Browser State: ', newState)
+
+    }
+}
+
+/// Tab Listener 
+export function tabListener() {
+// Tab Activating - Selecting another tab.
+chrome
+    .tabs
+    .onActivated
+        .addListener(activeInfo => handleEvent('Page Selected', activeInfo.tabId))
+    
+// Tab Updating - Changing a given tab.
+chrome 
+    .tabs
+    .onUpdated
+        .addListener((tabId, changeInfo, Tab) => handleEvent('Page Loaded', tabId))
+
+    chrome
+        .tabs
+        .onRemoved
+        .addListener((tabId, removeInfo) => handleEvent('Page Closed', tabId))
+}
+
+let handleEvent = ( event, tabId ) => {
+    return chrome
+        .tabs
+        .get(tabId, (tab) => {
+
+        if ( tab == null ) {
+            console.log("[Find Extension] Page Closed.")
+
+            let browserData = {
+                icon : "",
+                title : "",
+                url : ""
+            }
+
+          appendHistory(event, browserData)
+
+        } else if ( tab.status == "complete") {
+              console.log("[Find Extension] Page Not Ready.")
+
+            let browserData = {
+                icon : tab.favIconUrl,
+                title : tab.title,
+                url : tab.url
+            }
+
+          appendHistory(event, browserData)
+
+        } else {
+          console.log("[Find Extension] Page Not Ready.")
+        }
+            
+        })
+}

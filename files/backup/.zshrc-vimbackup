@@ -1,0 +1,75 @@
+# Vivek Menon - vvkmnn.xyz
+
+# ##################################################
+# ##################################################
+# ######################        ####################
+# ################                    ##############
+# #############                #######   ###########
+# ###########                #########     #########
+# #########                 ########         #######
+# ########                  ######            ######
+# #######                   ######             #####
+# ######            ####### ######              ####
+# #####           ######### ######               ###
+# #####           #######   ######               ###
+# #####            ######    #####               ###
+# #####             ######    ####               ###
+# #####              ######    ###               ###
+# #####               ######    #                ###
+# ######               ######                   ####
+# #######               #####                  #####
+# ########               #####                ######
+# ##########              #####             ########
+# ############             #####          ##########
+# ##############            #####       ############
+# ##################                ################
+# ##################################################
+# ##################################################
+
+#
+# User configuration sourced by interactive shells
+#
+
+# Export
+# Settings
+export LANG=en_US.UTF-8
+export BROWSER=open
+export TERM=xterm-256color
+export ARCHEY_LOGO_FILE=$HOME/.logo
+
+# Editor
+export VISUAL='open -a /Applications/Emacs.app/Contents/MacOS/Emacs' # $VISUAL opens any edits in in GUI mode
+export EDITOR=$VISUAL
+export ALTERNATE_EDITOR='vim'                                        # $EDITOR if all else fails
+export EDITOR='open -a /Applications/Emacs.app/Contents/MacOS/Emacs' # $EDITOR opens terminal edits in GUI mode
+
+# Path
+if [ -f ~/.profile ]; then
+    . ~/.profile
+fi
+
+# Aliases
+if [ -f ~/.aliases ]; then
+    . ~/.aliases
+fi
+
+# Theme
+PURE_PROMPT_SYMBOL="ॐ "
+
+# Prompt
+RPROMPT='v@%M %(?,%F{green}[-_-]%f,%F{red}[ಠ_ಠ]%f)'
+
+## brew
+export HOMEBREW_CASK_OPTS="--appdir=/Applications"
+
+## gcloud
+if [ -f "${HOME}/.google/path.zsh.inc" ]; then source "${HOME}/.google/path.zsh.inc"; fi
+if [ -f "${HOME}/.google/completion.zsh.inc" ]; then source "${HOME}/.google/completion.zsh.inc"; fi
+
+## fzf
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# Framework (Zim)
+export ZIM_HOME=${ZDOTDIR:-${HOME}}/.zim # Define zim location
+
+[[ -s ${ZIM_HOME}/init.zsh ]] && source ${ZIM_HOME}/init.zsh # Start zim

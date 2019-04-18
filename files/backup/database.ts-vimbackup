@@ -1,0 +1,147 @@
+// Saves to and from Database
+
+// Package Dependencies
+import {
+    ZeroEx,
+    SignedOrder
+} from '0x.js';
+
+// Local Dependencies
+import { hydraDatabase } from './env'
+
+const saveRelayAsksforSymbol = async (order: SignedOrder, relay: string, token: string): Promise<void> => {
+    return hydraDatabase.
+        .collection("relays")
+        .doc(relay)
+        .collection('orderbook')
+        .doc(token)
+        .collection('asks')
+        .doc(ZeroEx.getOrderHashHex(order))
+        .set(order)
+}
+// //
+// // FIXME when creating hydraFunctions, point to the same file from both yarn subpackages in the workspace
+//
+// // Package Dependencies
+// import * as _ from 'lodash';
+// import { BigNumber } from '@0xproject/utils';
+// import { schemas } from '@0xproject/json-schemas';
+// import { ECSignature, Order, SignedOrder } from '@0xproject/types';
+// import { OrderFillRequest } from '@0xproject/contract-wrappers';
+//
+// // Local Dependencies
+// import { hydra0x, hydraDatabase } from './env'
+// import { orderData, sortOrdersByPrice, orderPrice } from './price'
+// import { HydraOrder, HydraEcSignature } from './interfaces'
+//
+// /// Globals
+// const hydraAddress: string = hydra0x.NULL_ADDRESS;
+// const hydraFee: number = 0.01;
+//
+// // Functions
+// export const getAsks = async (exchange: string, token: string) : Promise<SignedOrder[]> => {
+//
+//     // FIXME Get all asks from relevant relays
+//     // Currently gets all Radar Relay ZRX orders on Kovan
+//
+//     let askQuery : SignedOrder[] = await hydraDatabase
+//         .collection('relays')
+//         .doc(exchange)
+//         .collection('tokens')
+//         .doc(token)
+//         .collection('asks')
+//         .get()
+//         .then(snapshot => snapshot.docs.map(doc => doc.data()))
+//
+//     return sortOrdersByPrice(askQuery)
+// }
+//
+// export const getBids = async (exchange: string, token: string) : Promise<SignedOrder[]> => {
+//
+//     // FIXME Get all bids from relevant relays
+//     // Currently gets all Radar Relay ZRX orders on Kovan
+//
+//     let bidQuery : SignedOrder[] = await hydraDatabase
+//         .collection('relays')
+//         .doc(exchange)
+//         .collection('tokens')
+//         .doc(token)
+//         .collection('bids')
+//         .get()
+//         .then(snapshot => snapshot.docs.map(doc => doc.data()))
+//
+//     return sortOrdersByPrice(bidQuery)
+// }
+//
+// const getTokenDetails = async (tokenAddress: string): Promise<{ name: string, symbol: string, decimals: number}> => {
+//     // console.log('Retrieving Token Name...')
+//     const { name, symbol, decimals } = await hydra0x.tokenRegistry.getTokenIfExistsAsync(tokenAddress)
+//
+//     return { name, symbol , decimals }
+//
+// }
+//
+//
+// export const getOrderBooks = async (relay: string): Promise<{ asks: SignedOrder[], bids: SignedOrder[] }> => {
+//
+//
+//     const bids : SignedOrder[] = await getBids('radar', 'zrx')
+//     const asks : SignedOrder[] = await getAsks('radar', 'zrx')
+//
+//     // Quote token are what they ask for
+//     const quoteToken = await getTokenDetails(asks[0].makerTokenAddress)
+//
+//     // Base token are what they bid with
+//     const baseToken = await getTokenDetails(bids[0].makerTokenAddress)
+//
+//     // Bidding on quote with base
+//     console.log(`${quoteToken.symbol}/${baseToken.symbol}`)
+//     bids.map(orderData)
+//
+//     // Asking for base with quote
+//     console.log(`${baseToken.symbol}/${quoteToken.symbol}`)
+//     asks.map(orderData)
+//
+//     return { asks, bids }
+// }
+//
+// // Bidding (Buying)
+//
+//
+// const createBidOrder = async (quoteToken: string, baseToken: string = 'WETH') : Promise<{ bidOrder: SignedOrder }> => {
+//     // Given a desired price, calculated the quoteToken to return
+//     const makerToken = baseToken
+//     const takerToken = token
+// }
+//
+// const createBuyOrder = async ( quoteToken: string, baseToken: string = 'WETH' ) : Promise<{ transactionHash }> => {
+//
+//     // Get a fillable signed order from top of Bids array
+//     // Use batchFillOrder async ?
+//
+//
+//     // Get the orders needed to hit 'desired amount'
+//     // Fetch orders then batch fill? yeah
+//     // Fetch orders than fill one by one? nah
+//
+//     // Convert desired amount to BigNumber?
+//     // Sum over asks table until desiredAmount - availableAmount = 0
+//
+//
+//
+//     const txHash = await zeroEx.exchange.fillOrderAsync(
+//         signedOrder,
+//         fillTakerTokenAmount,
+//         shouldThrowOnInsufficientBalanceOrAllowance,
+//         takerAddress,
+//     );
+//
+//     const txReceipt = await zeroEx.awaitTransactionMinedAsync(txHash);
+// }
+//
+// // Asking (Selling)
+//
+// const createAskOrder = (
+//     // Given a desired price, calculate the baseToken to return
+//
+// ) => {}

@@ -1,0 +1,238 @@
+import React, {Component} from 'react'
+import PropTypes from 'prop-types'
+
+import {map} from 'lodash'
+import {connect} from 'react-redux'
+import {firebaseConnect, populate} from 'react-redux-firebase'
+import {UserIsAuthenticated} from 'utils/router'
+
+import LoadingSpinner from 'components/LoadingSpinner'
+import SurveyTile from '../components/SurveyTile'
+import ListTile from '../components/ListTile'
+import NewSurveyDialog from '../components/NewSurveyDialog'
+import classes from './SurveysContainer.scss'
+import Button from 'components/Button'
+import AddIcon from 'react-icons/lib/go/plus'
+import ThumbIcon from 'react-icons/lib/fa/th'
+import ListIcon from 'react-icons/lib/fa/th-list'
+
+const firebaseDB = require('firebase')
+require('firebase/firestore')
+
+// const adsSdk = require('facebook-nodejs-ads-sdk');
+// const accessToken = 'EAAavks7uF3cBAAtZBHby0IK7aLxqNgjfHYcx3tIDe8ZCLviceA2uXoC0qXoShwmpAzhQiy3X3oiADZAhXRGS78829Y8sxKdq5wQzvlTJODZB7dceQvTf7QuKczPszQ7VtoMLAVIZBcKcVlfagbDvQzLaMtFbnH9tavHwmFZCbSt96gt3YePsCHZAZC1AGYqJCZADNsprQ260Rcnu3gPC0Aqql';
+// const api = adsSdk.FacebookAdsApi.init(accessToken);
+// console.log(account.id) // fields can be accessed as properties
+
+const populates = [{child: 'createdBy', root: 'users'}]
+
+@UserIsAuthenticated // redirect to /login if user is not authenticated
+@firebaseConnect(({params, auth}) => [
+  {
+    path: 'surveys',
+    populates
+  }
+])
+@connect(({firebase: {firebase, auth, data: {surveys}}}, {params}) => ({
+  auth,
+  surveys: populate(firebase, 'surveys', populates)
+}))
+export default class Surveys extends Component {
+  static contextTypes = {
+    router: PropTypes.object.isRequired
+  }
+
+  static propTypes = {
+    children: PropTypes.object,
+    surveys: PropTypes.array,
+    firebase: PropTypes.object
+  }
+
+  state = {
+    newProjectModal: false,
+    newProjectName: PropTypes.string,
+    listView: false,
+    surveys: [],
+    myCollectionRef: null,
+    myUserRef: null
+  }
+
+  componentDidMount() {
+    this._getUsersProjects()
+  }
+
+  _getUsersProjects() {
+    firebaseDB.auth().onAuthStateChanged(user => {
+      if (user) {
+        var db = firebaseDB.firestore()
+        var userId = user.uid
+        var userRef = db.collection('users').doc(userId)
+
+        // Attempt to get surveys..
+        var surveys = userRef.collection('mySurveys')
+        this.setState({
+          myUserRef: userRef,
+          myCollectionRef: surveys
+        })
+        surveys.onSnapshot(value => {
+          let promises = []
+          value.docs.map(obj => {
+            promises.push(obj.data().survey.get())
+          })
+
+          Promise.all(promises).then(docs => {
+            let finalData = []
+            docs.map(doc => {
+              if (doc && doc.exists) {
+                const item = doc.data()
+                item.id = doc.id
+                finalData.push(item)
+              }
+            })
+
+            this.setState({
+              surveys: finalData
+            })
+          })
+        })
+      } else {
+        this.setState({
+          surveys: [],
+          myCollectionRef: null
+        })
+      }
+    })
+  }
+
+  newSubmit = newProject => {
+    var db = firebaseDB.firestore()
+    var newSurveyDocRef = db.collection('surveys').doc()
+
+    newSurveyDocRef.collection('users').add({user: this.state.myUserRef})
+    newSurveyDocRef
+      .set({name: newProject.name, status: 'draft'})
+      .then(() => {
+        this.state.myCollectionRef.add({survey: newSurveyDocRef})
+        this.setState({newProjectModal: false})
+        this.context.router.push(`surveys/setup/${newSurveyDocRef.id}`)
+      })
+      .catch(err => {
+        alert('Error creating new survey.')
+      })
+  }
+
+  deleteProject = ({name}) => this.props.firebase.remove(`surveys/${name}`)
+
+  toggleModal = (name, project) => {
+    this.setState({[`${name}Modal`]: !this.state[`${name}Modal`]})
+  }
+
+  listViewSelect = value => {
+    this.setState({listView: value})
+  }
+
+  openSurvey = survey => {
+    if (!survey.status || survey.status === 'draft') {
+      this.context.router.push(`surveys/setup/${survey.id}`)
+    } else {
+      this.context.router.push(`surveys/analyze/${survey.id}`)
+    }
+  }
+
+  render() {
+    // Project Route is being loaded
+    if (this.props.children) return this.props.children
+
+    const surveys = this.state.surveys
+    const {newProjectModal} = this.state
+
+    // Figure out why this doesn't work.
+
+    if (!this.state.surveys) {
+      return <LoadingSpinner />
+    }
+    return (
+      <div className={classes.container}>
+        {newProjectModal && (
+          <NewSurveyDialog
+            open={newProjectModal}
+            onSubmit={this.newSubmit.bind(this)}
+            onRequestClose={() => this.toggleModal('newProject')}
+          />
+        )}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginBottom: 30
+          }}
+        >
+          <h1>My Surveys</h1>
+          <Button primary onClick={() => this.toggleModal('newProject')}>
+            <AddIcon /> Create A Survey
+          </Button>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginBottom: 10,
+            marginRight: 10
+          }}
+        >
+          <div></div>
+          <div>
+            <span style={{marginRight: 20}}>Layout</span>
+            <Button
+              style={{
+                padding: '12px',
+                margin: '5px'
+              }}
+              checkbox
+              primary
+              active={!this.state.listView}
+              onClick={() => this.listViewSelect(false)}
+            >
+              <ThumbIcon style={{height: '22px', width: '22px'}} />
+            </Button>
+            <Button
+              checkbox
+              primary
+              active={this.state.listView}
+              style={{
+                padding: '12px',
+                margin: '5px'
+              }}
+              onClick={() => this.listViewSelect(true)}
+            >
+              <ListIcon style={{height: '22px', width: '22px'}} />
+            </Button>
+          </div>
+        </div>
+        {this.state.listView === true && (
+          <div className={classes.list}>
+            {surveys && (
+              <ListTile project={surveys} context={this.context.router} />
+            )}
+          </div>
+        )}
+        {this.state.listView === false && (
+          <div className={classes.tiles}>
+            {surveys &&
+              map(surveys, survey => (
+                <SurveyTile
+                  key={survey.id}
+                  project={survey}
+                  onCollabClick={this.collabClick}
+                  onSelect={survey => this.openSurvey(survey)}
+                  onDelete={this.deleteProject}
+                />
+              ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+}
